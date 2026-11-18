@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Log In{% endblock %}
+
+{% block content %}
+<div style="max-width: 440px; margin: 2rem auto;">
+  <div style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: 2rem; box-shadow: var(--shadow-lg);">
+    
+    <div style="text-align: center; margin-bottom: 1.75rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔐</div>
+      <h1 class="page-title" style="font-size: 1.5rem;">Welcome to Campus Canteen</h1>
+      <p class="page-subtitle">Log in to place orders, check queues, or view sales</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+      <div class="form-group">
+        <label for="username" class="form-label">Username</label>
+        <input 
+          type="text" 
+          id="username" 
+          name="username" 
+          class="form-control" 
+          placeholder="e.g. student, staff, or admin" 
+          value="{{ username or '' }}" 
+          required 
+          autofocus
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="form-label">Password</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password" 
+          class="form-control" 
+          placeholder="••••••••" 
+          required
+        >
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 1rem;">
+        Sign In
+      </button>
+    </form>
+
+    <div style="margin-top: 1.5rem; text-align: center; font-size: 0.9rem; color: var(--text-muted);">
+      Don't have an account? 
+      <a href="{{ url_for('auth.register') }}" style="font-weight: 600; color: var(--primary);">Register here</a>
+    </div>
+
+    <!-- Quick Demo Accounts Helper -->
+    <div style="margin-top: 1.75rem; padding: 1rem; background-color: var(--bg-surface); border-radius: var(--radius-md); border: 1px dashed var(--border-color); font-size: 0.85rem;">
+      <div style="font-weight: 700; margin-bottom: 0.5rem; color: var(--text-main);">Demo Logins (Click to autofill):</div>
+      <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="fillLogin('student', 'student123')">
+          🎓 Student
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="fillLogin('staff', 'staff123')">
+          👨‍🍳 Staff
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="fillLogin('admin', 'admin123')">
+          👑 Admin
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function fillLogin(u, p) {
+    document.getElementById('username').value = u;
+    document.getElementById('password').value = p;
+  }
+</script>
+{% endblock %}

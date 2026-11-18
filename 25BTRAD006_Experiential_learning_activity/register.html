@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}Register Account{% endblock %}
+
+{% block content %}
+<div style="max-width: 480px; margin: 2rem auto;">
+  <div style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: 2rem; box-shadow: var(--shadow-lg);">
+    
+    <div style="text-align: center; margin-bottom: 1.75rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📝</div>
+      <h1 class="page-title" style="font-size: 1.5rem;">Create Your Account</h1>
+      <p class="page-subtitle">Join Campus Canteen for express pre-ordering</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.register') }}">
+      <div class="form-group">
+        <label for="name" class="form-label">Full Name</label>
+        <input 
+          type="text" 
+          id="name" 
+          name="name" 
+          class="form-control" 
+          placeholder="e.g. Rahul Sharma" 
+          value="{{ name or '' }}" 
+          required 
+          autofocus
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="username" class="form-label">Username</label>
+        <input 
+          type="text" 
+          id="username" 
+          name="username" 
+          class="form-control" 
+          placeholder="e.g. rahul_s" 
+          value="{{ username or '' }}" 
+          required
+        >
+        <div class="form-text">3-30 letters, numbers, or underscores.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="email" class="form-label">College Email Address</label>
+        <input 
+          type="email" 
+          id="email" 
+          name="email" 
+          class="form-control" 
+          placeholder="name@college.edu" 
+          value="{{ email or '' }}" 
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="role" class="form-label">I am registering as</label>
+        <select id="role" name="role" class="form-control" required>
+          <option value="student" {% if role == 'student' %}selected{% endif %}>🎓 Student (Order food &amp; view tokens)</option>
+          <option value="staff" {% if role == 'staff' %}selected{% endif %}>👨‍🍳 Canteen Staff (Manage kitchen queue)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="form-label">Password</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password" 
+          class="form-control" 
+          placeholder="At least 6 characters" 
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="confirm_password" class="form-label">Confirm Password</label>
+        <input 
+          type="password" 
+          id="confirm_password" 
+          name="confirm_password" 
+          class="form-control" 
+          placeholder="Re-enter password" 
+          required
+        >
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 1rem;">
+        Complete Registration
+      </button>
+    </form>
+
+    <div style="margin-top: 1.5rem; text-align: center; font-size: 0.9rem; color: var(--text-muted);">
+      Already have an account? 
+      <a href="{{ url_for('auth.login') }}" style="font-weight: 600; color: var(--primary);">Sign in here</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

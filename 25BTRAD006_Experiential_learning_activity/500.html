@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Server Error (500){% endblock %}
+
+{% block content %}
+<div class="empty-state" style="margin-top: 3rem;">
+  <div class="empty-icon">⚠️</div>
+  <h1 class="empty-title">500 - Server Error</h1>
+  <p class="empty-desc">
+    An unexpected error occurred while processing your canteen request. Our team has been notified. Please try again in a moment.
+  </p>
+  <div style="display: flex; gap: 0.75rem; justify-content: center;">
+    <a href="{{ url_for('menu.browse_menu') }}" class="btn btn-primary">
+      Return to Menu
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block title %}Kitchen Order Queue{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Canteen Live Order Queue</h1>
+    <p class="page-subtitle">Kitchen management console sorted by order time (Earliest first)</p>
+  </div>
+
+  <div style="display: flex; gap: 0.5rem; align-items: center;">
+    <button type="button" class="btn btn-secondary" onclick="window.location.reload();">
+      🔄 Refresh Now
+    </button>
+    <a href="#inventory-section" class="btn btn-primary">
+      📦 Toggle Menu Availability
+    </a>
+  </div>
+</div>
+
+<!-- Queue Metrics Counter Bar -->
+<div class="kpi-grid" style="margin-bottom: 1.5rem;">
+  <div class="kpi-card">
+    <div class="kpi-icon-box">⚡</div>
+    <div>
+      <div class="kpi-value">{{ counts.total_active }}</div>
+      <div class="kpi-label">Active in Kitchen</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon-box" style="background-color: var(--status-received-bg); color: var(--status-received);">📥</div>
+    <div>
+      <div class="kpi-value">{{ counts.received }}</div>
+      <div class="kpi-label">New Received</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon-box" style="background-color: var(--status-preparing-bg); color: var(--status-preparing);">🍳</div>
+    <div>
+      <div class="kpi-value">{{ counts.preparing }}</div>
+      <div class="kpi-label">Now Cooking</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon-box" style="background-color: var(--status-ready-bg); color: var(--status-ready);">🔔</div>
+    <div>
+      <div class="kpi-value">{{ counts.ready }}</div>
+      <div class="kpi-label">Ready for Pickup</div>
+    </div>
+  </div>
+</div>
+
+<!-- Queue Filter Tabs -->
+<div class="filter-card" style="padding: 0.75rem 1rem; margin-bottom: 1.5rem;">
+  <div class="category-chips">
+    <a href="{{ url_for('queue.staff_queue', status='active') }}" class="category-chip {% if filter_status == 'active' %}active{% endif %}">
+      🔥 All Active ({{ counts.total_active }})
+    </a>
+    <a href="{{ url_for('queue.staff_queue', status='Received') }}" class="category-chip {% if filter_status == 'Received' %}active{% endif %}">
+      📥 Received ({{ counts.received }})
+    </a>
+    <a href="{{ url_for('queue.staff_queue', status='Preparing') }}" class="category-chip {% if filter_status == 'Preparing' %}active{% endif %}">
+      🍳 Preparing ({{ counts.preparing }})
+    </a>
+    <a href="{{ url_for('queue.staff_queue', status='Ready') }}" class="category-chip {% if filter_status == 'Ready' %}active{% endif %}">
+      🔔 Ready ({{ counts.ready }})
+    </a>
+    <a href="{{ url_for('queue.staff_queue', status='completed') }}" class="category-chip {% if filter_status == 'completed' %}active{% endif %}">
+      ✅ Completed / History
+    </a>
+  </div>
+</div>
+
+<!-- Active Orders Grid -->
+{% set order_id_strings = [] %}
+{% for o in orders %}
+  {% set _ = order_id_strings.append(o.id ~ ':' ~ o.status) %}
+{% endfor %}
+
+<div 
+  id="staff-queue-container" 
+  class="queue-board-grid" 
+  data-order-ids="{{ order_id_strings | join(',') }}"
+  style="margin-bottom: 3rem;"
+>
+  {% if orders %}
+    {% for order in orders %}
+      <div class="queue-card">
+        
+        <!-- Queue Card Top Header -->
+        <div class="queue-card-top">
+          <div>
+            <span class="queue-token-tag">{{ order.token }}</span>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">
+              Ordered: {{ order.created_at }}
+            </div>
+          </div>
+          <span class="status-pill {{ order.status }}">
+            {% if order.status in ['Received', 'Preparing', 'Ready'] %}
+              <span class="pulse-dot"></span>
+            {% endif %}
+            {{ order.status }}
+          </span>
+        </div>
+
+        <!-- Order Customer & Items -->
+        <div class="queue-card-content">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem;">
+            <div style="font-weight: 700; font-size: 0.95rem;">{{ order.customer_name }}</div>
+            <div style="font-weight: 700; color: var(--primary);">{{ order.total | currency }}</div>
+          </div>
+
+          {% if order.special_instructions %}
+            <div style="background-color: var(--status-preparing-bg); color: #854d0e; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.82rem; margin-bottom: 0.75rem; border-left: 3px solid var(--status-preparing);">
+              <strong>Kitchen Note:</strong> {{ order.special_instructions }}
+            </div>
+          {% endif %}
+
+          <table class="queue-items-table">
+            <tbody>
+              {% for item in order.order_items %}
+                <tr>
+                  <td style="font-weight: 600;">
+                    &times;{{ item.quantity }} {{ item.item_name }}
+                  </td>
+                  <td style="text-align: right; color: var(--text-muted);">
+                    {{ item.subtotal | currency }}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Stage Action Buttons -->
+        <div class="queue-card-actions">
+          {% if order.next_status %}
+            <form method="POST" action="{{ url_for('queue.advance_order', order_id=order.id) }}" style="flex: 1;">
+              <button 
+                type="submit" 
+                class="btn btn-block {% if order.status == 'Received' %}btn-accent{% elif order.status == 'Preparing' %}btn-primary{% else %}btn-primary{% endif %}"
+              >
+                {% if order.status == 'Received' %}
+                  🍳 Start Preparing
+                {% elif order.status == 'Preparing' %}
+                  🔔 Mark Ready
+                {% elif order.status == 'Ready' %}
+                  🎉 Mark Collected
+                {% endif %}
+              </button>
+            </form>
+          {% else %}
+            <div style="flex: 1; text-align: center; font-size: 0.85rem; color: var(--text-muted); padding: 0.4rem;">
+              Order Complete
+            </div>
+          {% endif %}
+
+          <a href="{{ url_for('orders.order_detail', order_id=order.id) }}" class="btn btn-secondary btn-sm" title="View Ticket Detail">
+            Ticket
+          </a>
+        </div>
+
+      </div>
+    {% endfor %}
+  {% else %}
+    <div style="grid-column: 1 / -1;">
+      <div class="empty-state">
+        <div class="empty-icon">🍳</div>
+        <h3 class="empty-title">Queue is clear!</h3>
+        <p class="empty-desc">No orders are waiting in this category right now. Incoming student orders will appear here automatically.</p>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Menu Stock Availability Management Section -->
+<div id="inventory-section" style="margin-top: 3rem; padding-top: 2rem; border-top: 2px dashed var(--border-color);">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title" style="font-size: 1.4rem;">Live Menu Stock &amp; Availability</h2>
+      <p class="page-subtitle">Instantly mark dishes as Available or Sold Out for all students</p>
+    </div>
+  </div>
+
+  <div class="data-table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Dish</th>
+          <th>Category</th>
+          <th>Diet</th>
+          <th>Price</th>
+          <th>Status</th>
+          <th style="text-align: right;">Toggle Stock</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in menu_items %}
+          <tr>
+            <td style="font-weight: 700;">
+              {{ item.name }}
+            </td>
+            <td>{{ item.category }}</td>
+            <td>
+              <span class="diet-label {% if item.is_veg %}veg{% else %}non-veg{% endif %}">
+                <span class="diet-badge {% if item.is_veg %}veg{% else %}non-veg{% endif %}"></span>
+                {{ 'Veg' if item.is_veg else 'Non-Veg' }}
+              </span>
+            </td>
+            <td style="font-weight: 600;">{{ item.price | currency }}</td>
+            <td>
+              {% if item.is_available %}
+                <span class="status-pill Ready">In Stock</span>
+              {% else %}
+                <span class="status-pill Cancelled">Sold Out</span>
+              {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <form method="POST" action="{{ url_for('queue.toggle_item_stock', item_id=item.id) }}">
+                <button 
+                  type="submit" 
+                  class="btn btn-sm {% if item.is_available %}btn-secondary{% else %}btn-primary{% endif %}"
+                >
+                  {% if item.is_available %}
+                    🚫 Mark Sold Out
+                  {% else %}
+                    ✅ Mark Available
+                  {% endif %}
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

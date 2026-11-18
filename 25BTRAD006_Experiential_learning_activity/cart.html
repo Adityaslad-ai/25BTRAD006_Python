@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}Your Cart{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Shopping Cart</h1>
+    <p class="page-subtitle">Review your selected dishes before submitting your token order</p>
+  </div>
+  <a href="{{ url_for('menu.browse_menu') }}" class="btn btn-secondary">
+    &larr; Back to Menu
+  </a>
+</div>
+
+{% if cart_items %}
+  <div class="cart-layout">
+    
+    <!-- Cart Items Table / List -->
+    <div class="cart-items-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+        <h2 style="font-size: 1.2rem; font-weight: 700;">Cart Items ({{ item_count }})</h2>
+        <form method="POST" action="{{ url_for('orders.clear_cart') }}" onsubmit="return confirm('Are you sure you want to clear your cart?');">
+          <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--nonveg-color);">
+            Clear Cart
+          </button>
+        </form>
+      </div>
+
+      {% for item in cart_items %}
+        <div class="cart-item-row">
+          <div class="cart-item-details">
+            <div class="cart-emoji-icon">{{ item.image_emoji or '🍲' }}</div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.2rem;">
+                <span class="diet-badge {% if item.is_veg %}veg{% else %}non-veg{% endif %}"></span>
+                <span style="font-weight: 700; font-size: 1.05rem;">{{ item.name }}</span>
+              </div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">
+                {{ item.category }} &bull; {{ item.price | currency }} each
+              </div>
+            </div>
+          </div>
+
+          <!-- Quantity Stepper Controls -->
+          <div style="display: flex; align-items: center; gap: 1.25rem;">
+            <div class="qty-control">
+              <form method="POST" action="{{ url_for('orders.update_cart') }}" style="display: inline;">
+                <input type="hidden" name="item_id" value="{{ item.id }}">
+                <input type="hidden" name="quantity" value="{{ item.quantity - 1 }}">
+                <button type="submit" class="qty-btn" aria-label="Decrease quantity">&minus;</button>
+              </form>
+
+              <span class="qty-val">{{ item.quantity }}</span>
+
+              <form method="POST" action="{{ url_for('orders.update_cart') }}" style="display: inline;">
+                <input type="hidden" name="item_id" value="{{ item.id }}">
+                <input type="hidden" name="quantity" value="{{ item.quantity + 1 }}">
+                <button type="submit" class="qty-btn" aria-label="Increase quantity">&plus;</button>
+              </form>
+            </div>
+
+            <!-- Line Subtotal -->
+            <div style="font-weight: 700; font-size: 1.1rem; min-width: 80px; text-align: right; color: var(--primary);">
+              {{ item.subtotal | currency }}
+            </div>
+
+            <!-- Remove Button -->
+            <form method="POST" action="{{ url_for('orders.remove_from_cart', item_id=item.id) }}">
+              <button type="submit" class="btn btn-secondary btn-sm" title="Remove item" aria-label="Remove item">
+                🗑️
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Order Summary & Checkout -->
+    <div class="cart-summary-card">
+      <h2 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 1.25rem;">Order Bill Breakdown</h2>
+      
+      <div style="margin-bottom: 1.25rem;">
+        <div class="totals-row">
+          <span>Subtotal</span>
+          <span style="font-weight: 600;">{{ subtotal | currency }}</span>
+        </div>
+
+        <div class="totals-row">
+          <span>GST ({{ tax_rate_percent }}%)</span>
+          <span style="font-weight: 600;">{{ tax | currency }}</span>
+        </div>
+
+        <div class="totals-row grand-total">
+          <span>Total Payable</span>
+          <span>{{ total | currency }}</span>
+        </div>
+      </div>
+
+      <!-- Checkout Form -->
+      <form method="POST" action="{{ url_for('orders.checkout') }}">
+        <div class="form-group">
+          <label for="special_instructions" class="form-label">Kitchen Notes (Optional)</label>
+          <textarea 
+            id="special_instructions" 
+            name="special_instructions" 
+            class="form-control" 
+            rows="2" 
+            placeholder="e.g. Extra spicy, no onions, keep separate"
+          ></textarea>
+        </div>
+
+        {% if current_user %}
+          <button type="submit" class="btn btn-accent btn-block btn-lg" style="font-weight: 800;">
+            🚀 Place Order &amp; Get Token
+          </button>
+        {% else %}
+          <a href="{{ url_for('auth.login', next=url_for('orders.view_cart')) }}" class="btn btn-primary btn-block btn-lg">
+            Log in to Checkout
+          </a>
+          <div style="font-size: 0.8rem; text-align: center; color: var(--text-muted); margin-top: 0.5rem;">
+            You need a student account to receive a token number.
+          </div>
+        {% endif %}
+      </form>
+
+      <div style="margin-top: 1.25rem; font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; background-color: var(--bg-surface); padding: 0.75rem; border-radius: var(--radius-md);">
+        🔒 <strong>Express Pickup:</strong> Your order goes straight to the canteen kitchen queue. Watch live progress on your screen!
+      </div>
+    </div>
+
+  </div>
+{% else %}
+  <!-- Empty Cart State -->
+  <div class="empty-state">
+    <div class="empty-icon">🛒</div>
+    <h3 class="empty-title">Your cart is currently empty</h3>
+    <p class="empty-desc">You haven't added any dishes yet. Explore our delicious South Indian breakfasts, meal thalis, crispy snacks and drinks!</p>
+    <a href="{{ url_for('menu.browse_menu') }}" class="btn btn-primary btn-lg">
+      Browse Food Menu
+    </a>
+  </div>
+{% endif %}
+{% endblock %}

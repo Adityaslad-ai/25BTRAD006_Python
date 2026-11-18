@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+
+{% block title %}Order {{ order.token }}{% endblock %}
+
+{% block content %}
+<div class="page-header" style="justify-content: center; text-align: center; margin-bottom: 2rem;">
+  <div>
+    <h1 class="page-title">Digital Token Ticket</h1>
+    <p class="page-subtitle">Show this token at the canteen collection counter when your status turns <strong>Ready</strong></p>
+  </div>
+</div>
+
+<div class="ticket-wrapper" id="live-order-tracker" data-order-id="{{ order.id }}" data-status="{{ order.status }}">
+  <div class="ticket-card">
+    
+    <!-- Left & Right Ticket Perforation Cutout Notches -->
+    <div class="ticket-notch-left"></div>
+    <div class="ticket-notch-right"></div>
+
+    <!-- Ticket Top Header -->
+    <div class="ticket-header">
+      <div class="ticket-brand">CAMPUS CANTEEN TOKEN TICKET</div>
+      
+      <div class="ticket-token-box">
+        <div class="ticket-token-number">{{ order.token }}</div>
+      </div>
+
+      <div class="ticket-time-estimate">
+        <span>⏱️ Estimated Wait Time:</span>
+        <span class="ticket-time-badge">{{ order.estimated_wait_minutes }} Minutes</span>
+      </div>
+
+      <div style="margin-top: 0.75rem;">
+        <span class="status-pill status-pill-target {{ order.status }}">
+          <span class="pulse-dot"></span> {{ order.status }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Perforation Dashed Separator -->
+    <div class="ticket-perforation"></div>
+
+    <!-- Ticket Body Content -->
+    <div class="ticket-body">
+      
+      <!-- 4-Stage Live Order Stepper Timeline -->
+      {% set stages = ['Received', 'Preparing', 'Ready', 'Collected'] %}
+      {% set current_idx = stages.index(order.status) if order.status in stages else -1 %}
+      
+      <div class="timeline-stepper" aria-label="Order progress">
+        <div class="timeline-track">
+          <div 
+            class="timeline-progress" 
+            style="width: {% if order.status == 'Cancelled' %}0%{% elif current_idx >= 0 %}{{ (current_idx / (stages|length - 1)) * 100 }}%{% else %}0%{% endif %};"
+          ></div>
+        </div>
+
+        {% for stage in stages %}
+          {% set step_idx = loop.index0 %}
+          <div 
+            class="timeline-step {% if order.status != 'Cancelled' and step_idx < current_idx %}completed{% elif order.status != 'Cancelled' and step_idx == current_idx %}active{% endif %}"
+            data-stage="{{ stage }}"
+          >
+            <div class="step-node">
+              {% if order.status != 'Cancelled' and step_idx < current_idx %}
+                ✓
+              {% elif stage == 'Received' %}
+                📥
+              {% elif stage == 'Preparing' %}
+                🍳
+              {% elif stage == 'Ready' %}
+                🔔
+              {% elif stage == 'Collected' %}
+                🎉
+              {% endif %}
+            </div>
+            <div class="step-label">{{ stage }}</div>
+          </div>
+        {% endfor %}
+      </div>
+
+      {% if order.status == 'Cancelled' %}
+        <div class="alert alert-danger" style="text-align: center; justify-content: center; margin-bottom: 1.5rem;">
+          ⚠️ This order was cancelled and is not being prepared.
+        </div>
+      {% elif order.status == 'Ready' %}
+        <div class="alert alert-success" style="text-align: center; justify-content: center; margin-bottom: 1.5rem;">
+          🔔 <strong>Your order is ready!</strong> Please proceed to the pickup counter.
+        </div>
+      {% endif %}
+
+      <!-- Customer & Time Meta -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.88rem; background-color: var(--bg-surface); padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+        <div>
+          <span style="color: var(--text-muted); display: block;">Customer:</span>
+          <strong>{{ order.customer_name }}</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); display: block;">Ordered At:</span>
+          <strong>{{ order.created_at }}</strong>
+        </div>
+        {% if order.special_instructions %}
+          <div style="grid-column: span 2; border-top: 1px solid var(--border-color); padding-top: 0.5rem; margin-top: 0.25rem;">
+            <span style="color: var(--text-muted); display: block;">Kitchen Note:</span>
+            <em>"{{ order.special_instructions }}"</em>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Order Items Breakdown -->
+      <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.75rem;">Items in this Token</h3>
+      <ul class="ticket-items-list">
+        {% for item in items %}
+          <li class="ticket-item-row">
+            <div class="ticket-item-info">
+              <span class="diet-badge {% if item.is_veg %}veg{% else %}non-veg{% endif %}"></span>
+              <span><strong>{{ item.item_name }}</strong> &times; {{ item.quantity }}</span>
+            </div>
+            <span style="font-weight: 600;">{{ item.subtotal | currency }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+
+      <!-- Bill Totals -->
+      <div class="ticket-totals-box">
+        <div class="totals-row">
+          <span>Subtotal</span>
+          <span>{{ order.subtotal | currency }}</span>
+        </div>
+        <div class="totals-row">
+          <span>GST (5%)</span>
+          <span>{{ order.tax | currency }}</span>
+        </div>
+        <div class="totals-row grand-total">
+          <span>Total Paid</span>
+          <span>{{ order.total | currency }}</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons (Cancel if Received) -->
+      <div id="cancel-order-container" style="{% if order.status != 'Received' %}display: none;{% endif %} margin-bottom: 1.25rem; text-align: center;">
+        <form method="POST" action="{{ url_for('orders.cancel_order', order_id=order.id) }}" onsubmit="return confirm('Are you sure you want to cancel Order {{ order.token }}? This action cannot be undone.');">
+          <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--nonveg-color); border-color: var(--nonveg-color);">
+            🚫 Cancel Order (Received stage only)
+          </button>
+        </form>
+        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem;">
+          Cancellation is allowed only before the kitchen begins preparing.
+        </div>
+      </div>
+
+      <!-- Barcode simulation visual element -->
+      <div class="ticket-barcode" title="Simulated verification barcode">
+        <div class="barcode-line" style="width: 3px;"></div>
+        <div class="barcode-line" style="width: 1px;"></div>
+        <div class="barcode-line" style="width: 4px;"></div>
+        <div class="barcode-line" style="width: 2px;"></div>
+        <div class="barcode-line" style="width: 1px;"></div>
+        <div class="barcode-line" style="width: 5px;"></div>
+        <div class="barcode-line" style="width: 2px;"></div>
+        <div class="barcode-line" style="width: 3px;"></div>
+        <div class="barcode-line" style="width: 1px;"></div>
+        <div class="barcode-line" style="width: 4px;"></div>
+        <div class="barcode-line" style="width: 2px;"></div>
+        <div class="barcode-line" style="width: 6px;"></div>
+        <div class="barcode-line" style="width: 2px;"></div>
+        <div class="barcode-line" style="width: 1px;"></div>
+        <div class="barcode-line" style="width: 4px;"></div>
+        <div class="barcode-line" style="width: 3px;"></div>
+        <div class="barcode-line" style="width: 1px;"></div>
+        <div class="barcode-line" style="width: 5px;"></div>
+        <div class="barcode-line" style="width: 2px;"></div>
+        <div class="barcode-line" style="width: 4px;"></div>
+      </div>
+      <div style="text-align: center; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+        CANTEEN-PASS-{{ order.token }}-{{ order.id }}
+      </div>
+
+      <!-- Back / Nav options -->
+      <div style="display: flex; justify-content: space-between; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+        <a href="{{ url_for('orders.order_history') }}" class="btn btn-secondary btn-sm">
+          &larr; Order History
+        </a>
+        <a href="{{ url_for('menu.browse_menu') }}" class="btn btn-primary btn-sm">
+          Order More Food
+        </a>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+{% endblock %}

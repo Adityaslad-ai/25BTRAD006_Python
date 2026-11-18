@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}Menu{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Canteen Menu</h1>
+    <p class="page-subtitle">Order fresh meals, snacks &amp; beverages directly to your token queue</p>
+  </div>
+
+  {% if current_user and current_user.role == 'student' %}
+    <a href="{{ url_for('orders.order_history') }}" class="btn btn-secondary">
+      📜 Order History
+    </a>
+  {% endif %}
+</div>
+
+<!-- Search, Category Chips & Dietary Filter Controls -->
+<div class="filter-card">
+  <form method="GET" action="{{ url_for('menu.browse_menu') }}" class="filter-form">
+    
+    <!-- Keyword Search -->
+    <div class="search-input-group">
+      <span class="search-icon">🔍</span>
+      <input 
+        type="text" 
+        name="q" 
+        class="search-input" 
+        placeholder="Search dishes (e.g. Dosa, Biryani, Chai)..." 
+        value="{{ search_query or '' }}"
+        aria-label="Search menu items"
+      >
+    </div>
+
+    <!-- Dietary Filter Toggle -->
+    <div class="diet-toggle-group" role="group" aria-label="Dietary filter">
+      <input type="hidden" name="diet" id="diet-input" value="{{ selected_diet }}">
+      
+      <button 
+        type="button" 
+        class="diet-btn {% if selected_diet == 'all' or not selected_diet %}active{% endif %}"
+        onclick="setDietFilter('all')"
+      >
+        All Food
+      </button>
+
+      <button 
+        type="button" 
+        class="diet-btn {% if selected_diet == 'veg' %}active{% endif %}"
+        onclick="setDietFilter('veg')"
+      >
+        <span class="diet-badge veg"></span> Veg
+      </button>
+
+      <button 
+        type="button" 
+        class="diet-btn {% if selected_diet == 'non-veg' %}active{% endif %}"
+        onclick="setDietFilter('non-veg')"
+      >
+        <span class="diet-badge non-veg"></span> Non-Veg
+      </button>
+    </div>
+
+    <!-- Category Filter Hidden Input (Updated via chips) -->
+    <input type="hidden" name="category" id="category-input" value="{{ selected_category }}">
+
+    <button type="submit" class="btn btn-primary btn-sm">
+      Filter
+    </button>
+
+    {% if search_query or selected_category or (selected_diet and selected_diet != 'all') %}
+      <a href="{{ url_for('menu.browse_menu') }}" class="btn btn-secondary btn-sm" title="Clear all filters">
+        Reset
+      </a>
+    {% endif %}
+  </form>
+
+  <!-- Category Quick Chips -->
+  <div class="category-chips" style="margin-top: 1rem;">
+    <a 
+      href="{{ url_for('menu.browse_menu', category='', q=search_query, diet=selected_diet) }}"
+      class="category-chip {% if not selected_category %}active{% endif %}"
+    >
+      🍽️ All Categories
+    </a>
+    {% for cat in categories %}
+      <a 
+        href="{{ url_for('menu.browse_menu', category=cat, q=search_query, diet=selected_diet) }}"
+        class="category-chip {% if selected_category == cat %}active{% endif %}"
+      >
+        {% if cat == 'Breakfast' %}🥞{% elif cat == 'Lunch' %}🍱{% elif cat == 'Snacks' %}🥪{% elif cat == 'Drinks' %}🥤{% else %}🍲{% endif %}
+        {{ cat }}
+      </a>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Menu Grid -->
+{% if items %}
+  <div class="menu-grid">
+    {% for item in items %}
+      <div class="menu-card {% if not item.is_available %}sold-out{% endif %}">
+        <div class="menu-card-header">
+          <span>{{ item.image_emoji or '🍲' }}</span>
+          {% if not item.is_available %}
+            <div class="sold-out-overlay">Sold Out</div>
+          {% endif %}
+        </div>
+
+        <div class="menu-card-body">
+          <div class="menu-card-meta">
+            <span class="category-tag">{{ item.category }}</span>
+            <span class="diet-label {% if item.is_veg %}veg{% else %}non-veg{% endif %}">
+              <span class="diet-badge {% if item.is_veg %}veg{% else %}non-veg{% endif %}"></span>
+              {{ 'Veg' if item.is_veg else 'Non-Veg' }}
+            </span>
+          </div>
+
+          <h3 class="menu-card-title">{{ item.name }}</h3>
+          <p class="menu-card-desc">{{ item.description }}</p>
+
+          <div class="menu-card-footer">
+            <div class="item-price">{{ item.price | currency }}</div>
+
+            {% if item.is_available %}
+              <form method="POST" action="{{ url_for('orders.add_to_cart') }}" style="display: flex; gap: 0.4rem; align-items: center;">
+                <input type="hidden" name="item_id" value="{{ item.id }}">
+                <input type="hidden" name="quantity" value="1">
+                <button type="submit" class="btn btn-primary btn-sm">
+                  + Add to Cart
+                </button>
+              </form>
+            {% else %}
+              <button type="button" class="btn btn-secondary btn-sm disabled" disabled>
+                Sold Out
+              </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <!-- Empty State -->
+  <div class="empty-state">
+    <div class="empty-icon">🍽️</div>
+    <h3 class="empty-title">No menu items found</h3>
+    <p class="empty-desc">We couldn't find any items matching your selected criteria. Try adjusting your search or category filters.</p>
+    <a href="{{ url_for('menu.browse_menu') }}" class="btn btn-primary">
+      View Full Menu
+    </a>
+  </div>
+{% endif %}
+
+<script>
+  function setDietFilter(dietVal) {
+    document.getElementById('diet-input').value = dietVal;
+    document.querySelector('.filter-form').submit();
+  }
+</script>
+{% endblock %}

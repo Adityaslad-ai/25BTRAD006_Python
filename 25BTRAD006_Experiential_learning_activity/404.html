@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Page Not Found (404){% endblock %}
+
+{% block content %}
+<div class="empty-state" style="margin-top: 3rem;">
+  <div class="empty-icon">🔍</div>
+  <h1 class="empty-title">404 - Page Not Found</h1>
+  <p class="empty-desc">
+    The page or meal token you requested could not be located. It might have been moved or the URL might be mistyped.
+  </p>
+  <div style="display: flex; gap: 0.75rem; justify-content: center;">
+    <a href="{{ url_for('menu.browse_menu') }}" class="btn btn-primary">
+      Go to Canteen Menu
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard &amp; Analytics{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js from cdnjs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Executive Sales &amp; Operations Dashboard</h1>
+    <p class="page-subtitle">Real-time performance indicators, queue analytics, and item revenue</p>
+  </div>
+
+  <div style="display: flex; gap: 0.6rem; align-items: center;">
+    <a href="{{ url_for('reports.export_csv') }}" class="btn btn-accent">
+      📥 Export Sales CSV
+    </a>
+    <a href="{{ url_for('menu.admin_menu') }}" class="btn btn-primary">
+      ⚙️ Manage Menu
+    </a>
+  </div>
+</div>
+
+<!-- Key Performance Indicators (KPIs) -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-icon-box">📦</div>
+    <div>
+      <div class="kpi-value">{{ today_stats.total_orders or 0 }}</div>
+      <div class="kpi-label">Today's Total Orders</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon-box accent">💰</div>
+    <div>
+      <div class="kpi-value">{{ (today_stats.total_revenue or 0) | currency }}</div>
+      <div class="kpi-label">Today's Revenue</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon-box">📈</div>
+    <div>
+      <div class="kpi-value">{{ (all_time_stats.total_revenue or 0) | currency }}</div>
+      <div class="kpi-label">All-Time Revenue ({{ all_time_stats.total_orders or 0 }} Orders)</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon-box" style="background-color: var(--status-received-bg); color: var(--status-received);">⚡</div>
+    <div>
+      <div class="kpi-value">{{ live_queue_count }}</div>
+      <div class="kpi-label">Live Active In Queue</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row (Chart.js) -->
+<div class="charts-grid">
+  <!-- Orders per hour Chart -->
+  <div class="chart-card">
+    <div class="chart-card-title">🕒 Orders &amp; Peak Hour Distribution (Today)</div>
+    <div style="position: relative; height: 300px; width: 100%;">
+      <canvas id="hourlyOrdersChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Top 5 Selling Dishes Chart -->
+  <div class="chart-card">
+    <div class="chart-card-title">🏆 Top Selling Dishes Breakdown</div>
+    <div style="position: relative; height: 300px; width: 100%;">
+      <canvas id="topDishesChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Top 5 Dishes & Category Performance Tables -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+  
+  <!-- Top 5 Dishes -->
+  <div class="cart-items-card">
+    <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;">🔥 Top 5 Best-Selling Dishes</h3>
+    {% if top_dishes %}
+      <div class="data-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Dish</th>
+              <th>Category</th>
+              <th>Sold Qty</th>
+              <th>Sales</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for dish in top_dishes %}
+              <tr>
+                <td style="font-weight: 700;">
+                  <span style="font-size: 1.2rem; margin-right: 0.3rem;">{{ dish.image_emoji or '🍲' }}</span>
+                  {{ dish.item_name }}
+                </td>
+                <td>{{ dish.category }}</td>
+                <td><span class="nav-badge-pill">{{ dish.total_qty }} pcs</span></td>
+                <td style="font-weight: 700; color: var(--primary);">{{ dish.total_sales | currency }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); font-size: 0.9rem;">No sales data available yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Category Breakdown -->
+  <div class="cart-items-card">
+    <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;">🍱 Category Volume Breakdown</h3>
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Items Sold</th>
+            <th>Gross Revenue</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cat in category_sales %}
+            <tr>
+              <td style="font-weight: 700;">{{ cat.category }}</td>
+              <td>{{ cat.items_sold }} units</td>
+              <td style="font-weight: 700; color: var(--primary);">{{ cat.total_revenue | currency }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Recent Orders Preview Table -->
+<div class="cart-items-card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h3 style="font-size: 1.15rem; font-weight: 700;">📋 Recent Orders (Last 10)</h3>
+    <a href="{{ url_for('orders.order_history') }}" class="btn btn-secondary btn-sm">View All Orders &rarr;</a>
+  </div>
+
+  {% if recent_orders %}
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Customer</th>
+            <th>Ordered At</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ro in recent_orders %}
+            <tr>
+              <td>
+                <a href="{{ url_for('orders.order_detail', order_id=ro.id) }}" style="font-family: var(--font-mono); font-weight: 800; color: var(--primary);">
+                  {{ ro.token }}
+                </a>
+              </td>
+              <td>{{ ro.customer_name }}</td>
+              <td style="font-size: 0.85rem; color: var(--text-muted);">{{ ro.created_at }}</td>
+              <td>{{ ro.item_count }} item{{ 's' if ro.item_count != 1 else '' }}</td>
+              <td style="font-weight: 700;">{{ ro.total | currency }}</td>
+              <td>
+                <span class="status-pill {{ ro.status }}">{{ ro.status }}</span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p style="color: var(--text-muted); font-size: 0.9rem;">No orders registered yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const response = await fetch('/api/reports/chart-data');
+      if (!response.ok) return;
+      const data = await response.json();
+
+      // Deep green & Turmeric Yellow brand theme colors
+      const primaryColor = '#0e6b5c';
+      const accentColor = '#f2b01e';
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+        (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      
+      const gridColor = isDark ? '#334155' : '#e2e8f0';
+      const textColor = isDark ? '#94a3b8' : '#64748b';
+
+      // 1. Hourly Orders Chart
+      const hourlyCtx = document.getElementById('hourlyOrdersChart').getContext('2d');
+      new Chart(hourlyCtx, {
+        type: 'bar',
+        data: {
+          labels: data.hourly.labels,
+          datasets: [{
+            label: 'Orders Count',
+            data: data.hourly.orders,
+            backgroundColor: 'rgba(14, 107, 92, 0.85)',
+            borderColor: primaryColor,
+            borderWidth: 1,
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1, color: textColor },
+              grid: { color: gridColor }
+            },
+            x: {
+              ticks: { color: textColor },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+
+      // 2. Top Dishes Doughnut Chart
+      const topCtx = document.getElementById('topDishesChart').getContext('2d');
+      const palette = [
+        '#0e6b5c',
+        '#f2b01e',
+        '#2a9d8f',
+        '#e76f51',
+        '#457b9d'
+      ];
+
+      new Chart(topCtx, {
+        type: 'doughnut',
+        data: {
+          labels: data.top_dishes.labels.length ? data.top_dishes.labels : ['No items yet'],
+          datasets: [{
+            data: data.top_dishes.quantities.length ? data.top_dishes.quantities : [1],
+            backgroundColor: data.top_dishes.labels.length ? palette : ['#cbd5e1'],
+            borderWidth: 2,
+            borderColor: isDark ? '#1e293b' : '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: textColor, boxWidth: 12 }
+            }
+          }
+        }
+      });
+
+    } catch (err) {
+      console.error('Error rendering dashboard charts:', err);
+    }
+  });
+</script>
+{% endblock %}

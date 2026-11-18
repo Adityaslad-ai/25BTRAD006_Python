@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}Order History{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Order History</h1>
+    <p class="page-subtitle">Track your live meal tokens and view receipts from past canteen visits</p>
+  </div>
+  <a href="{{ url_for('menu.browse_menu') }}" class="btn btn-primary">
+    + New Order
+  </a>
+</div>
+
+{% if orders %}
+  <div class="data-table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Token #</th>
+          {% if current_user and current_user.role in ['staff', 'admin'] %}
+            <th>Customer</th>
+          {% endif %}
+          <th>Date &amp; Time</th>
+          <th>Items</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+          <tr>
+            <td>
+              <a href="{{ url_for('orders.order_detail', order_id=order.id) }}" style="font-family: var(--font-mono); font-weight: 800; font-size: 1.05rem; color: var(--primary);">
+                {{ order.token }}
+              </a>
+            </td>
+
+            {% if current_user and current_user.role in ['staff', 'admin'] %}
+              <td>
+                <div style="font-weight: 600;">{{ order.customer_name }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ order.customer_email }}</div>
+              </td>
+            {% endif %}
+
+            <td style="color: var(--text-muted); font-size: 0.88rem;">
+              {{ order.created_at }}
+            </td>
+
+            <td>
+              <span class="nav-badge-pill" style="background-color: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-color);">
+                {{ order.item_count }} item{{ 's' if order.item_count != 1 else '' }}
+              </span>
+            </td>
+
+            <td style="font-weight: 700; color: var(--primary);">
+              {{ order.total | currency }}
+            </td>
+
+            <td>
+              <span class="status-pill {{ order.status }}">
+                {% if order.status in ['Received', 'Preparing', 'Ready'] %}
+                  <span class="pulse-dot"></span>
+                {% endif %}
+                {{ order.status }}
+              </span>
+            </td>
+
+            <td style="text-align: right;">
+              <div style="display: inline-flex; gap: 0.4rem; justify-content: flex-end;">
+                <a href="{{ url_for('orders.order_detail', order_id=order.id) }}" class="btn btn-secondary btn-sm">
+                  View Ticket &rarr;
+                </a>
+
+                {% if order.status == 'Received' %}
+                  <form method="POST" action="{{ url_for('orders.cancel_order', order_id=order.id) }}" style="display: inline;" onsubmit="return confirm('Cancel order {{ order.token }}?');">
+                    <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--nonveg-color); border-color: var(--nonveg-color);">
+                      Cancel
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📜</div>
+    <h3 class="empty-title">No orders found</h3>
+    <p class="empty-desc">You haven't placed any canteen orders yet. Order ahead to get your first token number!</p>
+    <a href="{{ url_for('menu.browse_menu') }}" class="btn btn-primary btn-lg">
+      Browse Food Menu
+    </a>
+  </div>
+{% endif %}
+{% endblock %}
